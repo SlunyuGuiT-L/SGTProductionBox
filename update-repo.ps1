@@ -42,6 +42,8 @@ $repoJson = @"
     "IsHide": false,
     "IsTestingExclusive": false,
     "DownloadLink": "$DownloadUrl",
+    "DownloadLinkInstall": "$DownloadUrl",
+    "DownloadLinkTesting": "$DownloadUrl",
     "LastUpdate": $lastUpdate,
     "DalamudApiLevel": 15,
     "LoadRequiredState": 0,
