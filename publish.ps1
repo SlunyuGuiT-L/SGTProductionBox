@@ -2,7 +2,8 @@ param(
     [string]$Owner = "your-name",
     [string]$Repo = "SGTProductionBox",
     [string]$Version = "",
-    [string]$DalamudHome = ""
+    [string]$DalamudHome = "",
+    [string]$Mirror = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -63,6 +64,10 @@ if (-not (Test-Path $packaged)) {
 Copy-Item $packaged $zipPath -Force
 
 $url = "https://github.com/$Owner/$Repo/releases/download/v$Version/$zipName"
+if ($Mirror) {
+    # 国内直连镜像，例如 https://ghfast.top/
+    $url = $Mirror + $url
+}
 
 & (Join-Path $root "update-repo.ps1") -Version $Version -DownloadUrl $url -RepoUrl "https://github.com/$Owner/$Repo"
 

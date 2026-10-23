@@ -151,7 +151,21 @@ dotnet build -c Release
 
 ### 4. 玩家怎么装
 
-`/xlsettings` → **Custom Plugin Repositories** → 填你的 repo.json 地址 → 勾选 + 保存 → `/xlplugins` 里搜索 `SGT Production Box` 安装。
+国内直连（不用代理，推荐给国内朋友）：
+
+```
+https://ghfast.top/https://raw.githubusercontent.com/SlunyuGuiT-L/SGTProductionBox/main/repo.json
+```
+
+有代理 / 国外：
+
+```
+https://raw.githubusercontent.com/SlunyuGuiT-L/SGTProductionBox/main/repo.json
+```
+
+`/xlsettings` → **Custom Plugin Repositories** → 填上面任意一个 → 勾选 + 保存 → `/xlplugins` 的 **Available Plugins** 里搜索 `SGT Production Box` 安装。
+
+> 说明：GitHub 的 release 下载在国内经常连不上，所以 `repo.json` 里的 `DownloadLink` 默认走 `ghfast.top` 镜像；镜像失效时可以把 `ghfast.top` 换成 `ghproxy.net` 或 `gh-proxy.com` 再重新生成 `repo.json`。
 
 ### 其他方式
 

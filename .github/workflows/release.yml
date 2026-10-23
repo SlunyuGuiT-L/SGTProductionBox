@@ -47,7 +47,7 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           $version = $env:TAG.TrimStart("v")
-          $url = "https://github.com/$env:REPO/releases/download/$env:TAG/SGTProductionBox-$env:TAG.zip"
+          $url = "https://ghfast.top/https://github.com/$env:REPO/releases/download/$env:TAG/SGTProductionBox-$env:TAG.zip"
 
           git fetch origin $env:DEFAULT_BRANCH
           git checkout -B $env:DEFAULT_BRANCH "origin/$env:DEFAULT_BRANCH"
