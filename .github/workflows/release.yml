@@ -47,7 +47,7 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           $version = $env:TAG.TrimStart("v")
-          $url = "https://ghproxy.net/https://github.com/$env:REPO/releases/download/$env:TAG/SGTProductionBox-$env:TAG.zip"
+          $url = "https://gh-proxy.com/https://github.com/$env:REPO/releases/download/$env:TAG/SGTProductionBox-$env:TAG.zip"
 
           git fetch origin $env:DEFAULT_BRANCH
           git checkout -B $env:DEFAULT_BRANCH "origin/$env:DEFAULT_BRANCH"

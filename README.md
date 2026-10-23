@@ -154,7 +154,7 @@ dotnet build -c Release
 国内直连（不用代理，推荐给国内朋友）：
 
 ```
-https://ghproxy.net/https://raw.githubusercontent.com/SlunyuGuiT-L/SGTProductionBox/main/repo.json
+https://gh-proxy.com/https://raw.githubusercontent.com/SlunyuGuiT-L/SGTProductionBox/main/repo.json
 ```
 
 有代理 / 国外：
@@ -165,7 +165,7 @@ https://raw.githubusercontent.com/SlunyuGuiT-L/SGTProductionBox/main/repo.json
 
 `/xlsettings` → **Custom Plugin Repositories** → 填上面任意一个 → 勾选 + 保存 → `/xlplugins` 的 **Available Plugins** 里搜索 `SGT Production Box` 安装。
 
-> 说明：GitHub 的 release 下载在国内经常连不上，所以 `repo.json` 里的 `DownloadLink` 默认走 `ghproxy.net` 镜像；镜像失效时可以换成 `gh-proxy.com` 再重新生成 `repo.json`（`ghfast.top` 在部分代理环境下 .NET TLS 握手会失败）。
+> 说明：GitHub 的 release 下载在国内经常连不上，所以 `repo.json` 里的 `DownloadLink` 默认走 `gh-proxy.com` 镜像；镜像失效时可以换成 `ghproxy.net` 再重新生成 `repo.json`（`ghfast.top` 在部分代理环境下 .NET TLS 握手会失败）。
 
 ### 其他方式
 
