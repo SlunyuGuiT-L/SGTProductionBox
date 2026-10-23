@@ -504,6 +504,9 @@ public sealed class MainWindow : Window, IDisposable
         }
 
         rowsKey = signature;
+        // 库存变了就强制重建配方树，避免用到旧的库存快照算缺口。
+        treeCache.Clear();
+        treesKey = string.Empty;
         rows = BuildRows(list);
     }
 
@@ -512,7 +515,7 @@ public sealed class MainWindow : Window, IDisposable
     {
         var totalNeed = rows.Sum(row => row.Need);
         var haveTotal = rows.Sum(row => Math.Min(row.Have, row.Need));
-        var missing = rows.Sum(row => row.Missing);
+        var missing = rows.Sum(row => row.Gap);
         var crafts = rows.Sum(row => row.Crafts);
         var ratio = totalNeed == 0 ? 0f : Math.Clamp(haveTotal / (float)totalNeed, 0f, 1f);
         var complete = rows.Count > 0 && missing == 0;
@@ -661,15 +664,15 @@ public sealed class MainWindow : Window, IDisposable
             .ToList();
 
         ImGui.TextDisabled($"制作 · {craftRows.Count} 种 · {craftRows.Sum(row => row.Crafts)} 次");
-        DrawSummaryRows(craftRows, row => $"×{row.Missing}（{row.Crafts} 次）");
+        DrawSummaryRows(craftRows, row => $"×{row.Gap}（{row.Crafts} 次）");
 
         ImGui.Separator();
 
-        var missing = gatherRows.Sum(row => row.Missing);
+        var missing = gatherRows.Sum(row => row.Gap);
         ImGui.TextDisabled($"采集 · {gatherRows.Count} 种 · 还需 {missing}");
         DrawSummaryRows(gatherRows, row =>
         {
-            var left = row.Missing;
+            var left = row.Gap;
             return left > 0 ? $"×{left}" : "已够";
         });
     }
@@ -815,7 +818,7 @@ public sealed class MainWindow : Window, IDisposable
 
     private bool MatchesFilter(MaterialRow row) => kindFilter switch
     {
-        "missing" => row.Missing > 0,
+        "missing" => row.Gap > 0,
         "craft" => row.Kind == MaterialKind.Craftable,
         "gather" => row.Kind == MaterialKind.Gathered,
         "currency" => row.Kind == MaterialKind.Currency,
@@ -827,7 +830,7 @@ public sealed class MainWindow : Window, IDisposable
     {
         var scale = ImGuiHelpers.GlobalScale;
         var color = ColorOf(row.Kind);
-        var missing = Math.Max(0, row.Missing);
+        var missing = Math.Max(0, row.Gap);
 
         using var style = ImRaii.PushStyle(ImGuiStyleVar.ChildRounding, 6f * scale)
             .Push(ImGuiStyleVar.ChildBorderSize, 1f)
@@ -1084,8 +1087,11 @@ public sealed class MainWindow : Window, IDisposable
         public ushort Icon;
         public string Source = string.Empty;
 
+        /// <summary>实际缺口：至少是"需求 - 现有"，防止配方树里的旧库存快照把缺口算成 0。</summary>
+        public int Gap => Manual ? Need : Math.Max(Missing, Math.Max(0, Need - Have));
+
         public int Crafts => Kind == MaterialKind.Craftable
-            ? (int)Math.Ceiling(Math.Max(0, Missing) / (double)Math.Max(1, Output))
+            ? (int)Math.Ceiling(Math.Max(0, Gap) / (double)Math.Max(1, Output))
             : 0;
     }
 
@@ -1214,7 +1220,7 @@ public sealed class MainWindow : Window, IDisposable
 
         // 同一个材料可能在多个分支里出现，按"全清单还没准备的数量"交给 Artisan。
         var row = rows.FirstOrDefault(item => item.ItemId == node.ItemId);
-        var amount = row is not null ? Math.Max(1, row.Missing) : node.Amount;
+        var amount = row is not null ? Math.Max(1, row.Gap) : node.Amount;
 
         if (plugin.Artisan.TryCraft(node.RecipeId, amount, out var error))
         {
