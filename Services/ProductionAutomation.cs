@@ -29,6 +29,8 @@ public sealed class ProductionAutomation
     private readonly LifestreamIpc lifestream;
     private readonly ArtisanIpc artisan;
     private readonly IChatGui chat;
+    private readonly PushService push;
+    private readonly Configuration config;
 
     private readonly Dictionary<uint, int> gatherNeeds = new();
     private readonly Queue<CraftJob> jobs = new();
@@ -47,7 +49,9 @@ public sealed class ProductionAutomation
         GatherBuddyIpc gatherBuddy,
         LifestreamIpc lifestream,
         ArtisanIpc artisan,
-        IChatGui chat)
+        IChatGui chat,
+        PushService push,
+        Configuration config)
     {
         this.craftData = craftData;
         this.inventory = inventory;
@@ -55,6 +59,8 @@ public sealed class ProductionAutomation
         this.lifestream = lifestream;
         this.artisan = artisan;
         this.chat = chat;
+        this.push = push;
+        this.config = config;
     }
 
     private readonly record struct CraftJob(uint RecipeId, int Amount, string Name);
@@ -254,6 +260,15 @@ public sealed class ProductionAutomation
             phase = Phase.Done;
             Status = $"完成：已提交 {finishedJobs} 项制作任务。";
             chat.Print("[SGT] 自动流程完成，制作任务已全部交给 Artisan。");
+            if (config.PushOnDone)
+            {
+                push.Notify(
+                    (PushProvider)config.PushProvider,
+                    config.PushToken,
+                    "SGT 自动流程完成",
+                    $"已提交 {finishedJobs} 项制作任务。");
+            }
+
             return;
         }
 
@@ -318,6 +333,14 @@ public sealed class ProductionAutomation
         phase = Phase.Failed;
         Status = "失败：" + reason;
         chat.PrintError("[SGT] 自动流程失败：" + reason);
+        if (config.PushOnError)
+        {
+            push.Notify(
+                (PushProvider)config.PushProvider,
+                config.PushToken,
+                "SGT 自动流程失败",
+                reason);
+        }
     }
 
     public string DestinationName() => destination switch

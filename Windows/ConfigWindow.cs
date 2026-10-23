@@ -2,6 +2,7 @@ using System;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
+using SGTProductionBox.Services;
 
 namespace SGTProductionBox.Windows;
 
@@ -127,6 +128,58 @@ public sealed class ConfigWindow : Window, IDisposable
 
         ImGui.TextWrapped("状态：" + plugin.Automation.Status);
         ImGui.TextDisabled("采集完成 = 背包里的采集材料够数；回房屋用 Lifestream，制作用 Artisan。");
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Text("问题推送（手机）");
+
+        string[] providers = { "关闭", "Server酱", "PushPlus", "Bark", "企业微信机器人", "自定义 Webhook" };
+        var provider = Math.Clamp(config.PushProvider, 0, providers.Length - 1);
+        if (ImGui.Combo("推送方式", ref provider, providers, providers.Length))
+        {
+            config.PushProvider = provider;
+            config.Save();
+        }
+
+        var token = config.PushToken;
+        ImGui.InputText("Token / Webhook", ref token, 512, ImGuiInputTextFlags.Password);
+        if (token != config.PushToken)
+        {
+            config.PushToken = token;
+            config.Save();
+        }
+
+        DrawCheckbox("自动流程失败时推送", config.PushOnError, value =>
+        {
+            config.PushOnError = value;
+            config.Save();
+        });
+
+        DrawCheckbox("自动流程完成时推送", config.PushOnDone, value =>
+        {
+            config.PushOnDone = value;
+            config.Save();
+        });
+
+        if (ImGui.Button("发送测试推送"))
+        {
+            plugin.Push.Notify(
+                (PushProvider)config.PushProvider,
+                config.PushToken,
+                "SGT 测试推送",
+                "收到这条就说明手机推送配置成功了。");
+        }
+
+        ImGui.SameLine();
+        ImGui.TextDisabled(config.PushProvider switch
+        {
+            1 => "Server酱 SendKey（sct.ftqq.com）",
+            2 => "PushPlus token（pushplus.plus）",
+            3 => "Bark Key（iOS App）",
+            4 => "企业微信机器人完整 Webhook",
+            5 => "自定义 URL，POST {title, content}",
+            _ => "未开启",
+        });
 
         ImGui.Spacing();
         ImGui.Separator();

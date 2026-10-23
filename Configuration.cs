@@ -31,6 +31,18 @@ public class Configuration : IPluginConfiguration
     /// <summary>不使用背包现有数量、需要全部重新准备的材料 ID（"手工"模式）。</summary>
     public List<uint> ManualMaterials { get; set; } = new();
 
+    /// <summary>手机推送渠道（PushProvider）。</summary>
+    public int PushProvider { get; set; }
+
+    /// <summary>推送 Token / Webhook 地址。</summary>
+    public string PushToken { get; set; } = string.Empty;
+
+    /// <summary>自动流程失败时推送到手机。</summary>
+    public bool PushOnError { get; set; } = true;
+
+    /// <summary>自动流程完成时推送到手机。</summary>
+    public bool PushOnDone { get; set; } = true;
+
     public bool UsesInventory(uint itemId) => !ManualMaterials.Contains(itemId);
 
     /// <summary>切换某个材料是否使用背包数量。</summary>

@@ -65,6 +65,22 @@ FF14 的**生产清单规划插件**（Dalamud / 卫月）。给一个目标物�
 
 依赖：**Lifestream**（回房屋）、**Artisan**（制作）、**GatherBuddyReborn**（采集）。没有 Lifestream 时选择回房屋会直接失败并提示。
 
+## 手机推送（报错 / 完成通知）
+
+`/sgt config` → 设置里「问题推送（手机）」：
+
+- **推送方式**：关闭 / Server酱 / PushPlus / Bark / 企业微信机器人 / 自定义 Webhook
+- **Token / Webhook**：
+  - Server酱：https://sct.ftqq.com/ 微信扫码拿 SendKey
+  - PushPlus：https://www.pushplus.plus/ 微信扫码拿 token
+  - Bark：iOS App 里的 Key
+  - 企业微信机器人：群机器人完整 Webhook 地址
+  - 自定义：任意接受 `POST {"title":"...","content":"..."}` 的地址
+- 可以分别开关「自动流程失败时推送」「自动流程完成时推送」
+- 配好后点「发送测试推送」验证
+
+推送是异步发送的，不会卡游戏；发送失败只会写进 `/xllog`，不会影响插件。
+
 ## 已知限制
 
 - 兑换只取商店里第一条成本的货币和数量，没有处理多货币组合、票据上限、周限。

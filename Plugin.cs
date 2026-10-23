@@ -33,6 +33,7 @@ public sealed class Plugin : IDalamudPlugin
     public GatherBuddyIpc GatherBuddy { get; init; }
     public LifestreamIpc Lifestream { get; init; }
     public ProductionAutomation Automation { get; init; }
+    public PushService Push { get; init; }
 
     public readonly WindowSystem WindowSystem = new("SGTProductionBox");
 
@@ -55,7 +56,8 @@ public sealed class Plugin : IDalamudPlugin
         Inventory = new InventoryService(GameInventory);
         GatherBuddy = new GatherBuddyIpc(PluginInterface);
         Lifestream = new LifestreamIpc(PluginInterface);
-        Automation = new ProductionAutomation(CraftData, Inventory, GatherBuddy, Lifestream, Artisan, ChatGui);
+        Push = new PushService(Log);
+        Automation = new ProductionAutomation(CraftData, Inventory, GatherBuddy, Lifestream, Artisan, ChatGui, Push, Configuration);
         Framework.Update += OnFrameworkUpdate;
 
         MainWindow = new MainWindow(this);
