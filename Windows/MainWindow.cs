@@ -851,9 +851,16 @@ public sealed class MainWindow : Window, IDisposable
             ImGui.BeginGroup();
             var displayName = row.Name.Length > 15 ? row.Name[..14] + "…" : row.Name;
             ImGui.TextUnformatted(displayName);
-            if (displayName != row.Name && ImGui.IsItemHovered())
+            if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip(row.Name);
+                var tip = displayName != row.Name ? row.Name + "\n点击复制名称" : "点击复制名称";
+                ImGui.SetTooltip(tip);
+            }
+
+            if (ImGui.IsItemClicked())
+            {
+                ImGui.SetClipboardText(row.Name);
+                Plugin.ChatGui.Print($"[SGT] 已复制材料名：{row.Name}");
             }
 
             var tagClicked = TagPill("##kind-tag", KindName(row.Kind), color, "点击查看配方树");
