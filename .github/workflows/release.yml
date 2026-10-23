@@ -1,0 +1,67 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Fetch Dalamud dev files
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/goatcorp/dalamud-distrib/raw/main/latest.zip" -OutFile "$env:RUNNER_TEMP\dalamud.zip"
+          Expand-Archive "$env:RUNNER_TEMP\dalamud.zip" -DestinationPath "$env:RUNNER_TEMP\dalamud" -Force
+          "DALAMUD_HOME=$env:RUNNER_TEMP\dalamud" >> $env:GITHUB_ENV
+
+      - name: Build
+        run: dotnet build SGTProductionBox.csproj -c Release
+
+      - name: Package
+        shell: pwsh
+        run: Copy-Item "bin\Release\SGTProductionBox\latest.zip" "SGTProductionBox-${{ github.ref_name }}.zip"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "SGTProductionBox-${{ github.ref_name }}.zip"
+
+      - name: Update and commit repo.json
+        shell: pwsh
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          $version = $env:TAG.TrimStart("v")
+          $url = "https://github.com/$env:REPO/releases/download/$env:TAG/SGTProductionBox-$env:TAG.zip"
+
+          git fetch origin $env:DEFAULT_BRANCH
+          git checkout -B $env:DEFAULT_BRANCH "origin/$env:DEFAULT_BRANCH"
+
+          ./update-repo.ps1 -Version $version -DownloadUrl $url
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add repo.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "repo.json unchanged"
+            exit 0
+          }
+
+          git commit -m "chore: update repo.json for $env:TAG"
+          git push origin "HEAD:$env:DEFAULT_BRANCH"

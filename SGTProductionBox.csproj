@@ -1,0 +1,23 @@
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+  <PropertyGroup>
+    <Version>1.0.0.0</Version>
+    <RootNamespace>SGTProductionBox</RootNamespace>
+    <AssemblyName>SGTProductionBox</AssemblyName>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!--
+    下面这些属性会被 Dalamud.NET.Sdk 写进生成的 SGTProductionBox.json 插件清单，
+    也就是 /xlplugins 里看到的信息。改成你自己的即可。
+  -->
+  <PropertyGroup>
+    <Author>SGT</Author>
+    <Name>SGT Production Box</Name>
+    <Punchline>多清单生产规划：配方树、材料分类、一键 Artisan 制作。</Punchline>
+    <Description>SGT Production Box 是 FF14 的生产清单规划插件：可以建立多个生产清单，展开配方树查看每个材料属于制作、采集、兑换还是 NPC 购买，汇总总需求，并把制作任务交给 Artisan。</Description>
+    <RepoUrl>https://github.com/SlunyuGuiT-L/SGTProductionBox</RepoUrl>
+    <Tags>crafting;recipe;production;artisan;sgt</Tags>
+  </PropertyGroup>
+</Project>
