@@ -24,6 +24,7 @@ public sealed class MainWindow : Window, IDisposable
     private int selectedAmount = 1;
     private string kindFilter = "all";
     private bool showTree;
+    private bool openStartFlow;
     private bool forceOpenActiveList;
     private MaterialNode? tree;
     private string treeKey = string.Empty;
@@ -84,6 +85,14 @@ public sealed class MainWindow : Window, IDisposable
                 DrawRightPanel();
             }
         }
+
+        if (openStartFlow)
+        {
+            ImGui.OpenPopup("##start-flow");
+            openStartFlow = false;
+        }
+
+        DrawStartFlowPopup();
     }
 
     /// <summary>给 /mg add 用：按名字添加第一个匹配的物品。</summary>
@@ -606,7 +615,7 @@ public sealed class MainWindow : Window, IDisposable
 
     private void DrawHeroButtons(float availableWidth)
     {
-        string[] labels = { "刷新背包", "复制清单", "设置" };
+        string[] labels = { "一键开始", "刷新背包", "复制清单", "设置" };
         var padding = ImGui.GetStyle().FramePadding;
         var spacing = ImGui.GetStyle().ItemSpacing.X;
         var widths = labels.Select(label => ImGui.CalcTextSize(label).X + padding.X * 2f).ToArray();
@@ -615,7 +624,7 @@ public sealed class MainWindow : Window, IDisposable
         // 中间栏变窄时换成短标签，避免按钮被裁掉。
         if (total > availableWidth - 4f)
         {
-            labels = new[] { "刷新", "复制", "设置" };
+            labels = new[] { "开始", "刷新", "复制", "设置" };
             widths = labels.Select(label => ImGui.CalcTextSize(label).X + padding.X * 2f).ToArray();
             total = widths.Sum() + spacing * (labels.Length - 1);
         }
@@ -637,10 +646,13 @@ public sealed class MainWindow : Window, IDisposable
             switch (i)
             {
                 case 0:
+                    openStartFlow = true;
+                    break;
+                case 1:
                     plugin.Inventory.Refresh();
                     rowsKey = string.Empty;
                     break;
-                case 1:
+                case 2:
                     ImGui.SetClipboardText(string.Join(
                         '\n',
                         rows.Select(row => $"{row.Name} ×{row.Need}（已有 {row.Have}，还需 {Math.Max(0, row.Need - row.Have)}）")));
@@ -651,6 +663,74 @@ public sealed class MainWindow : Window, IDisposable
                     break;
             }
         }
+    }
+
+    /// <summary>一键开始流程的确认弹窗。</summary>
+    private void DrawStartFlowPopup()
+    {
+        if (!ImGui.BeginPopup("##start-flow"))
+        {
+            return;
+        }
+
+        var config = plugin.Configuration;
+
+        ImGui.TextColored(new Vector4(0.85f, 0.90f, 1.00f, 1f), "一键开始流程");
+        ImGui.Separator();
+        ImGui.TextWrapped("1. 等待 GBR 采集完成（清单里的采集材料够数）");
+        ImGui.TextWrapped("2. 返回房屋");
+        ImGui.TextWrapped("3. 开始制作");
+        ImGui.Spacing();
+        ImGui.TextWrapped("请确认 GatherBuddyReborn 已经设置好要采集的材料。");
+
+        if (plugin.GatherBuddy.TryGetStatus(out var enabled, out var statusText))
+        {
+            ImGui.Text($"GBR 自动采集：{(enabled ? "已开启" : "已关闭")}");
+            if (!string.IsNullOrWhiteSpace(statusText))
+            {
+                ImGui.TextDisabled(statusText);
+            }
+        }
+        else
+        {
+            ImGui.TextColored(new Vector4(0.95f, 0.55f, 0.50f, 1f), "未检测到 GatherBuddyReborn");
+        }
+
+        string[] targets = { "不返回（原地制作）", "个人房屋", "部队房屋" };
+        var target = Math.Clamp(config.AutoReturnTarget, 0, 2);
+        if (ImGui.Combo("返回地点", ref target, targets, targets.Length))
+        {
+            config.AutoReturnTarget = target;
+            config.Save();
+        }
+
+        var autoEnable = config.AutoEnableGather;
+        if (ImGui.Checkbox("开始时自动开启 GBR 自动采集", ref autoEnable))
+        {
+            config.AutoEnableGather = autoEnable;
+            config.Save();
+        }
+
+        ImGui.Spacing();
+
+        if (ImGui.Button("开始流程"))
+        {
+            if (config.AutoEnableGather)
+            {
+                plugin.GatherBuddy.TrySetEnabled(true, out _);
+            }
+
+            plugin.StartAutomation();
+            ImGui.CloseCurrentPopup();
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("取消"))
+        {
+            ImGui.CloseCurrentPopup();
+        }
+
+        ImGui.EndPopup();
     }
 
     /// <summary>右侧一栏：上半是制作，下半是采集。</summary>

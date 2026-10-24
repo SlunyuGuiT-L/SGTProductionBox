@@ -46,6 +46,9 @@ public class Configuration : IPluginConfiguration
     /// <summary>按物品手动指定的配方 ID（物品 ID → 配方 ID）。</summary>
     public Dictionary<uint, uint> RecipeOverrides { get; set; } = new();
 
+    /// <summary>一键开始时自动开启 GBR 自动采集。</summary>
+    public bool AutoEnableGather { get; set; } = true;
+
     public bool UsesInventory(uint itemId) => !ManualMaterials.Contains(itemId);
 
     /// <summary>切换某个材料是否使用背包数量。</summary>
