@@ -43,6 +43,9 @@ public class Configuration : IPluginConfiguration
     /// <summary>自动流程完成时推送到手机。</summary>
     public bool PushOnDone { get; set; } = true;
 
+    /// <summary>按物品手动指定的配方 ID（物品 ID → 配方 ID）。</summary>
+    public Dictionary<uint, uint> RecipeOverrides { get; set; } = new();
+
     public bool UsesInventory(uint itemId) => !ManualMaterials.Contains(itemId);
 
     /// <summary>切换某个材料是否使用背包数量。</summary>

@@ -111,7 +111,7 @@ public sealed class ProductionAutomation
 
         foreach (var entry in list.Entries)
         {
-            Walk(craftData.BuildTree(entry.ItemId, entry.Amount, 12, Stock), 0);
+            Walk(craftData.BuildTree(entry.ItemId, entry.Amount, 12, Stock, config.RecipeOverrides), 0);
         }
 
         foreach (var pair in craftTotals

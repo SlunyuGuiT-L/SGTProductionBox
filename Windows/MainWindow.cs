@@ -497,7 +497,7 @@ public sealed class MainWindow : Window, IDisposable
 
     private void EnsureRows(CraftList list)
     {
-        var signature = $"{plugin.Configuration.ActiveListIndex}|{list.Name}|{string.Join(';', list.Entries.Select(e => $"{e.ItemId}:{e.Amount}"))}|{plugin.Inventory.Version}|{string.Join(',', plugin.Configuration.ManualMaterials)}";
+        var signature = $"{plugin.Configuration.ActiveListIndex}|{list.Name}|{string.Join(';', list.Entries.Select(e => $"{e.ItemId}:{e.Amount}"))}|{plugin.Inventory.Version}|{string.Join(',', plugin.Configuration.ManualMaterials)}|{string.Join(',', plugin.Configuration.RecipeOverrides.Select(pair => $"{pair.Key}:{pair.Value}"))}";
         if (signature == rowsKey)
         {
             return;
@@ -1019,7 +1019,8 @@ public sealed class MainWindow : Window, IDisposable
     private List<MaterialNode> GetListTrees(CraftList list)
     {
         var key = $"{string.Join(';', list.Entries.Select(entry => $"{entry.ItemId}:{entry.Amount}"))}"
-                  + $"|{plugin.Inventory.Version}|{string.Join(',', plugin.Configuration.ManualMaterials)}";
+                  + $"|{plugin.Inventory.Version}|{string.Join(',', plugin.Configuration.ManualMaterials)}"
+                  + $"|{string.Join(',', plugin.Configuration.RecipeOverrides.Select(pair => $"{pair.Key}:{pair.Value}"))}";
         if (key != treesKey)
         {
             treesKey = key;
@@ -1034,7 +1035,7 @@ public sealed class MainWindow : Window, IDisposable
             var cacheKey = (entry.ItemId, entry.Amount);
             if (!treeCache.TryGetValue(cacheKey, out var root))
             {
-                root = plugin.CraftData.BuildTree(entry.ItemId, entry.Amount, 12, Stock);
+                root = plugin.CraftData.BuildTree(entry.ItemId, entry.Amount, 12, Stock, plugin.Configuration.RecipeOverrides);
                 treeCache[cacheKey] = root;
             }
 
@@ -1185,12 +1186,54 @@ public sealed class MainWindow : Window, IDisposable
             ImGui.PopID();
         }
 
+        var recipes = plugin.CraftData.GetRecipes(node.ItemId);
+        if (recipes.Count > 1)
+        {
+            ImGui.SameLine();
+            ImGui.PushID((int)node.ItemId);
+            if (ImGui.SmallButton("配方"))
+            {
+                ImGui.OpenPopup("##recipe-menu");
+            }
+
+            if (ImGui.BeginPopup("##recipe-menu"))
+            {
+                var current = node.RecipeId != 0
+                    ? node.RecipeId
+                    : plugin.Configuration.RecipeOverrides.GetValueOrDefault(node.ItemId, recipes[0].RowId);
+
+                foreach (var recipe in recipes)
+                {
+                    var recipeLabel = $"Lv{CraftData.GetRecipeLevel(recipe)} · #{recipe.RowId}"
+                                      + (recipe.IsSecondary ? "（次）" : string.Empty);
+                    if (ImGui.MenuItem(recipeLabel, string.Empty, current == recipe.RowId))
+                    {
+                        plugin.Configuration.RecipeOverrides[node.ItemId] = recipe.RowId;
+                        plugin.Configuration.Save();
+                        tree = null;
+                        treeCache.Clear();
+                        treesKey = string.Empty;
+                        rowsKey = string.Empty;
+                    }
+                }
+
+                ImGui.EndPopup();
+            }
+
+            ImGui.PopID();
+        }
+
         if (ImGui.IsItemHovered())
         {
             var tip = KindName(node.Kind);
             if (node.CraftLevel > 0)
             {
                 tip += $" · 配方等级 {node.CraftLevel}";
+            }
+
+            if (node.RecipeId != 0)
+            {
+                tip += $" · 配方 #{node.RecipeId}";
             }
 
             if (!string.IsNullOrEmpty(node.Source))

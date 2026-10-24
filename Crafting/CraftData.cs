@@ -25,7 +25,7 @@ public sealed class CraftData
         this.module = module;
     }
 
-    private readonly record struct Offer(MaterialKind Kind, string Text, long Cost);
+    private readonly record struct Offer(MaterialKind Kind, string Text);
 
     /// <summary>按名字（或物品 ID）搜索物品，最多返回 <paramref name="maxResults"/> 条。</summary>
     public IReadOnlyList<ItemSearchResult> SearchItems(string query, int maxResults = 20)
@@ -61,12 +61,17 @@ public sealed class CraftData
 
     /// <summary>
     /// 构建配方树。<paramref name="stock"/> 返回某个物品可用的背包数量（返回 0 表示不抵扣），
-    /// 用来计算"实际还需要做/采多少"。
+    /// 用来计算"实际还需要做/采多少"；<paramref name="recipeOverrides"/> 可以按物品指定配方。
     /// </summary>
-    public MaterialNode BuildTree(uint itemId, int amount, int maxDepth = 12, Func<uint, int>? stock = null)
+    public MaterialNode BuildTree(
+        uint itemId,
+        int amount,
+        int maxDepth = 12,
+        Func<uint, int>? stock = null,
+        IReadOnlyDictionary<uint, uint>? recipeOverrides = null)
     {
         EnsureAll();
-        return BuildNode(itemId, Math.Max(1, amount), 0, maxDepth, new HashSet<uint>(), stock);
+        return BuildNode(itemId, Math.Max(1, amount), 0, maxDepth, new HashSet<uint>(), stock, recipeOverrides);
     }
 
     /// <summary>把树的叶子按物品合并，得到最终要准备的清单。</summary>
@@ -105,7 +110,7 @@ public sealed class CraftData
     }
 
     private MaterialNode BuildNode(uint itemId, int amount, int depth, int maxDepth, HashSet<uint> visited,
-        Func<uint, int>? stock)
+        Func<uint, int>? stock, IReadOnlyDictionary<uint, uint>? recipeOverrides)
     {
         var (name, icon) = GetItemInfo(itemId);
         var node = new MaterialNode
@@ -121,10 +126,23 @@ public sealed class CraftData
         node.Missing = missing;
 
         var recipes = GetRecipes(itemId);
-
-        if (recipes.Count > 0 && depth < maxDepth && visited.Add(itemId))
+        Recipe? chosen = null;
+        if (recipeOverrides is not null && recipeOverrides.TryGetValue(itemId, out var overrideId))
         {
-            var recipe = recipes[0];
+            foreach (var candidate in recipes)
+            {
+                if (candidate.RowId == overrideId)
+                {
+                    chosen = candidate;
+                    break;
+                }
+            }
+        }
+
+        chosen ??= recipes.Count > 0 ? recipes[0] : null;
+
+        if (chosen is { } recipe && depth < maxDepth && visited.Add(itemId))
+        {
             node.Kind = MaterialKind.Craftable;
             node.CraftLevel = GetRecipeLevel(recipe);
 
@@ -160,7 +178,8 @@ public sealed class CraftData
                         depth + 1,
                         maxDepth,
                         visited,
-                        stock));
+                        stock,
+                        recipeOverrides));
                 }
             }
 
@@ -191,7 +210,7 @@ public sealed class CraftData
         return MaterialKind.Unknown;
     }
 
-    private static byte GetRecipeLevel(Recipe recipe)
+    public static byte GetRecipeLevel(Recipe recipe)
         => recipe.RecipeLevelTable.IsValid ? recipe.RecipeLevelTable.Value.ClassJobLevel : (byte)0;
 
     private void EnsureAll()
@@ -259,8 +278,18 @@ public sealed class CraftData
 
         foreach (var list in map.Values)
         {
-            // 同一个物品可能有多张配方，优先用等级最低（最容易做）的那张。
-            list.Sort((a, b) => GetRecipeLevel(a).CompareTo(GetRecipeLevel(b)));
+            // 同一个物品可能有多张配方（旧版本、替代配方等）：
+            // 优先非 secondary，其次配方等级高的（当前版本），最后取 RowId 大的（较新）。
+            list.Sort((a, b) =>
+            {
+                if (a.IsSecondary != b.IsSecondary)
+                {
+                    return a.IsSecondary ? 1 : -1;
+                }
+
+                var levelCompare = GetRecipeLevel(b).CompareTo(GetRecipeLevel(a));
+                return levelCompare != 0 ? levelCompare : b.RowId.CompareTo(a.RowId);
+            });
         }
 
         recipesByResult = map;
@@ -294,6 +323,7 @@ public sealed class CraftData
         }
 
         var map = new Dictionary<uint, Offer>();
+        var currencyCosts = new Dictionary<uint, List<string>>();
 
         // 金币商店（子行表，每个子行是一个售卖位）
         foreach (var row in module.GetSubrowSheet<GilShopItem>().Flatten())
@@ -306,11 +336,11 @@ public sealed class CraftData
 
             if (!map.ContainsKey(itemId))
             {
-                map[itemId] = new Offer(MaterialKind.Vendor, "NPC 金币购买", 0);
+                map[itemId] = new Offer(MaterialKind.Vendor, "NPC 金币购买");
             }
         }
 
-        // 特殊商店（诗学、因果、票据等兑换）
+        // 特殊商店（诗学、因果、票据、宇宙信用点等兑换）
         foreach (var shop in module.GetSheet<SpecialShop>())
         {
             foreach (var entry in shop.Item)
@@ -320,12 +350,24 @@ public sealed class CraftData
                     continue;
                 }
 
-                var cost = entry.ItemCosts[0];
-                var costItemId = cost.ItemCost.RowId;
-                if (costItemId == 0 || cost.CurrencyCost == 0)
+                var costParts = new List<string>();
+                foreach (var cost in entry.ItemCosts)
+                {
+                    var costItemId = cost.ItemCost.RowId;
+                    if (costItemId == 0 || cost.CurrencyCost == 0)
+                    {
+                        continue;
+                    }
+
+                    costParts.Add($"{GetItemName(costItemId)} ×{cost.CurrencyCost}");
+                }
+
+                if (costParts.Count == 0)
                 {
                     continue;
                 }
+
+                var costText = string.Join(" + ", costParts);
 
                 foreach (var receive in entry.ReceiveItems)
                 {
@@ -335,19 +377,22 @@ public sealed class CraftData
                         continue;
                     }
 
-                    if (map.TryGetValue(itemId, out var existing)
-                        && existing.Kind == MaterialKind.Currency
-                        && existing.Cost <= cost.CurrencyCost)
+                    if (!currencyCosts.TryGetValue(itemId, out var list))
                     {
-                        continue;
+                        currencyCosts[itemId] = list = new List<string>(2);
                     }
 
-                    map[itemId] = new Offer(
-                        MaterialKind.Currency,
-                        $"兑换：{GetItemName(costItemId)} ×{cost.CurrencyCost}",
-                        cost.CurrencyCost);
+                    if (!list.Contains(costText) && list.Count < 3)
+                    {
+                        list.Add(costText);
+                    }
                 }
             }
+        }
+
+        foreach (var pair in currencyCosts)
+        {
+            map[pair.Key] = new Offer(MaterialKind.Currency, "兑换：" + string.Join(" / ", pair.Value));
         }
 
         offers = map;
