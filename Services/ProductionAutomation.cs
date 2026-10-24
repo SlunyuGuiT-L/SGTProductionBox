@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using SGTProductionBox.Crafting;
 
 namespace SGTProductionBox.Services;
@@ -227,6 +228,12 @@ public sealed class ProductionAutomation
 
                 if (!busy)
                 {
+                    if (destination != 0 && !IsInsideHouse())
+                    {
+                        Fail("没有进入房屋。请在 Lifestream 里把这套房子的进入方式设为「进入房屋」。");
+                        break;
+                    }
+
                     StartCrafting();
                 }
                 else if (now > deadline)
@@ -321,8 +328,19 @@ public sealed class ProductionAutomation
         return missing;
     }
 
-    private void StartCrafting()
+    private static unsafe bool IsInsideHouse()
     {
+        var manager = HousingManager.Instance();
+        if (manager == null)
+        {
+            return false;
+        }
+
+        var indoor = manager->IndoorTerritory;
+        return indoor != null && indoor->IsLoaded();
+    }
+
+    private void StartCrafting()    {
         phase = Phase.Craft;
         Status = "开始制作…";
         chat.Print($"[SGT] 开始制作，共 {jobs.Count} 项任务。");
